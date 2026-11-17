@@ -114,7 +114,52 @@ const CREATOR_TOOLS: { id: CreatorToolType; label: string }[] = [
   { id: 'music', label: 'Zon Muzik' },
 ];
 
+class AppErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; errorMsg: string }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false, errorMsg: '' };
+  }
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, errorMsg: error?.message || 'Ralat tidak dijangka' };
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center p-6">
+          <div className="max-w-md w-full bg-slate-900 border border-white/15 rounded-2xl p-6 space-y-3 text-center">
+            <h2 className="font-display text-xl font-bold text-amber-300">
+              Dunia Bahasa Blockverse
+            </h2>
+            <p className="text-sm text-slate-300">
+              Paparan mengalami ralat sementara ({this.state.errorMsg}). Sila muat semula halaman.
+            </p>
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 rounded-xl bg-amber-400 text-slate-950 text-sm font-bold"
+            >
+              Muat Semula
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export default function App() {
+  return (
+    <AppErrorBoundary>
+      <BlockverseApp />
+    </AppErrorBoundary>
+  );
+}
+
+function BlockverseApp() {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [avatar, setAvatar] = useState<AvatarConfig>(DEFAULT_AVATAR);
   const [worldsList, setWorldsList] = useState<WorldSummary[]>([]);
@@ -190,13 +235,14 @@ export default function App() {
           getCurrentUser().catch(() => null),
           listWorlds().catch(() => []),
         ]);
+        const safeWorlds = Array.isArray(worlds) ? worlds : [];
         if (me) {
           setUser(me);
           setAvatar(me.avatar);
         }
-        setWorldsList(worlds);
+        setWorldsList(safeWorlds);
 
-        const defaultCode = worlds[0]?.worldCode || 'KAMPUNG01';
+        const defaultCode = safeWorlds[0]?.worldCode || 'KAMPUNG01';
         try {
           const loaded = await loadWorldByCode(defaultCode);
           setActiveWorld(loaded);
@@ -955,7 +1001,7 @@ export default function App() {
 
           {/* Bottom World Quick Switcher Strip */}
           <div className="flex flex-wrap items-center gap-2 pointer-events-auto">
-            {worldsList.slice(0, 5).map((w) => (
+            {(Array.isArray(worldsList) ? worldsList : []).slice(0, 5).map((w) => (
               <button
                 key={w.id}
                 type="button"

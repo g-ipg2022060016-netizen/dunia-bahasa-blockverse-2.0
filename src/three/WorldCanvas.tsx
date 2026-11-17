@@ -347,10 +347,17 @@ export const WorldCanvas: React.FC<WorldCanvasProps> = ({
     const container = mountRef.current;
     if (!container) return;
 
+    let renderer: THREE.WebGLRenderer;
+    try {
+      const isSoftwareGlInit = detectSoftwareWebGL();
+      renderer = createStudioRenderer(isSoftwareGlInit);
+      renderer.setSize(container.clientWidth || 1280, container.clientHeight || 720);
+      container.appendChild(renderer.domElement);
+    } catch (err) {
+      console.error('WebGL initialization failed:', err);
+      return;
+    }
     const isSoftwareGl = detectSoftwareWebGL();
-    const renderer = createStudioRenderer(isSoftwareGl);
-    renderer.setSize(container.clientWidth || 1280, container.clientHeight || 720);
-    container.appendChild(renderer.domElement);
 
     const store = sceneObjectsRef.current;
     store.maxAnisotropy = renderer.capabilities.getMaxAnisotropy();

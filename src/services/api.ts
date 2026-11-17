@@ -94,9 +94,17 @@ async function apiFetch<T>(url: string, options: RequestInit = {}): Promise<T> {
     credentials: 'include',
   });
 
-  const data = await res.json().catch(() => ({}));
+  const text = await res.text();
+  let data: Record<string, unknown> = {};
+  try {
+    data = text ? (JSON.parse(text) as Record<string, unknown>) : {};
+  } catch {
+    throw new Error('Pelayan API tidak tersedia. Pastikan pemboleh ubah Supabase telah ditetapkan.');
+  }
   if (!res.ok) {
-    throw new Error(data.error || `Ralat pelayan (${res.status})`);
+    throw new Error(
+      typeof data.error === 'string' ? data.error : `Ralat pelayan (${res.status})`
+    );
   }
   return data as T;
 }
@@ -226,8 +234,12 @@ export async function getCurrentUser(): Promise<UserProfile | null> {
       return null;
     }
   }
-  const res = await apiFetch<{ user: UserProfile | null }>('/api/auth/me');
-  return res.user;
+  try {
+    const res = await apiFetch<{ user: UserProfile | null }>('/api/auth/me');
+    return res.user ?? null;
+  } catch {
+    return null;
+  }
 }
 
 export async function loginAccount(
@@ -359,8 +371,15 @@ export async function listWorlds(): Promise<WorldSummary[]> {
     return (data as SupabaseWorldRow[]).map(mapRowToWorld).map(makeWorldSummary);
   }
 
-  const res = await apiFetch<{ worlds: WorldSummary[] }>('/api/worlds');
-  return res.worlds;
+  try {
+    const res = await apiFetch<{ worlds?: WorldSummary[] }>('/api/worlds');
+    if (Array.isArray(res.worlds) && res.worlds.length > 0) {
+      return res.worlds;
+    }
+  } catch {
+    // Fallback to starter worlds on static hosting
+  }
+  return DEFAULT_STARTER_WORLDS.map(makeWorldSummary);
 }
 
 export async function loadWorldByCode(worldCode: string): Promise<WorldData> {
@@ -380,10 +399,16 @@ export async function loadWorldByCode(worldCode: string): Promise<WorldData> {
     throw new Error(`Kod Dunia "${code}" tidak dijumpai.`);
   }
 
-  const res = await apiFetch<{ world: WorldData }>(
-    `/api/worlds/by-code/${encodeURIComponent(code)}`
-  );
-  return res.world;
+  try {
+    const res = await apiFetch<{ world?: WorldData }>(
+      `/api/worlds/by-code/${encodeURIComponent(code)}`
+    );
+    if (res.world) return res.world;
+  } catch {
+    const starter = DEFAULT_STARTER_WORLDS.find((w) => w.worldCode.toUpperCase() === code);
+    if (starter) return starter;
+  }
+  throw new Error(`Kod Dunia "${code}" tidak dijumpai.`);
 }
 
 export async function createNewWorld(payload: {
