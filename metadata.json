@@ -1,0 +1,6 @@
+{
+  "name": "Dunia Bahasa Blockverse",
+  "description": "Platform dunia maya 3D interaktif berasaskan voxel untuk pembelajaran Simpulan Bahasa dan Peribahasa Melayu sekolah rendah Malaysia.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": []
+}
